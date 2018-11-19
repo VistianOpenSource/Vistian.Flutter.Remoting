@@ -69,7 +69,6 @@
     <Compile Include="ServiceSettings.cs" />
     <Compile Include="TestService.cs" />
     <Compile Include="Location.cs" />
-    <Compile Include="WIP.cs" />
   </ItemGroup>
   <ItemGroup>
     <AndroidAsset Include="Assets\flutter_shared\icudtl.dat" />

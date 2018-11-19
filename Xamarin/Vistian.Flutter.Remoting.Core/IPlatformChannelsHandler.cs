@@ -52,11 +52,6 @@ namespace Vistian.Flutter.Remoting
             }
         }
 
-        public static string GetEventChannelName(string serviceHandlerName)
-        {
-            return $"{serviceHandlerName}/events";
-        }
-
         public virtual void Start(T param)
         {
         }
