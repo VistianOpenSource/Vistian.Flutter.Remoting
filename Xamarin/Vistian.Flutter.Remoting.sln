@@ -1,0 +1,61 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2050
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vistian.Flutter.Remoting.Droid", "Vistian.Flutter.Remoting.Droid\Vistian.Flutter.Remoting.Droid.csproj", "{46B93AAC-162C-4E13-BF5E-3D706C237B3F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vistian.Flutter.Remoting.Core", "Vistian.Flutter.Remoting.Core\Vistian.Flutter.Remoting.Core.csproj", "{B756B5FF-FD25-4B9B-B720-1E9F0571651D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vistian.Flutter.Remoting.Autofac", "Vistian.Flutter.Remoting.Autofac\Vistian.Flutter.Remoting.Autofac.csproj", "{05F86A8B-AC5F-466A-B51D-D52687F739C6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vistian.Flutter.Remoting.iOS", "Vistian.Flutter.Remoting.iOS\Vistian.Flutter.Remoting.iOS.csproj", "{E71F3053-056C-4381-9638-048ED73BDFF6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vistian.Flutter.Remoting.Droid.Example", "Vistian.Flutter.Remoting.Droid.Example\Vistian.Flutter.Remoting.Droid.Example.csproj", "{3BC0AC7E-3B3B-4D3F-9CC0-B2BDECC460A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vistian.Flutter.Remoting.Templates", "Vistian.Flutter.Remoting.Templates\Vistian.Flutter.Remoting.Templates.csproj", "{E8480AD3-4B8E-41EC-BBDB-0B1EFEA6D638}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{566F6634-E368-4BD0-917B-F9C1888B6074}"
+	ProjectSection(SolutionItems) = preProject
+		..\readme.md = ..\readme.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{46B93AAC-162C-4E13-BF5E-3D706C237B3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46B93AAC-162C-4E13-BF5E-3D706C237B3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46B93AAC-162C-4E13-BF5E-3D706C237B3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46B93AAC-162C-4E13-BF5E-3D706C237B3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B756B5FF-FD25-4B9B-B720-1E9F0571651D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B756B5FF-FD25-4B9B-B720-1E9F0571651D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B756B5FF-FD25-4B9B-B720-1E9F0571651D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B756B5FF-FD25-4B9B-B720-1E9F0571651D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05F86A8B-AC5F-466A-B51D-D52687F739C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05F86A8B-AC5F-466A-B51D-D52687F739C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05F86A8B-AC5F-466A-B51D-D52687F739C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05F86A8B-AC5F-466A-B51D-D52687F739C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E71F3053-056C-4381-9638-048ED73BDFF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E71F3053-056C-4381-9638-048ED73BDFF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E71F3053-056C-4381-9638-048ED73BDFF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E71F3053-056C-4381-9638-048ED73BDFF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3BC0AC7E-3B3B-4D3F-9CC0-B2BDECC460A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3BC0AC7E-3B3B-4D3F-9CC0-B2BDECC460A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3BC0AC7E-3B3B-4D3F-9CC0-B2BDECC460A6}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{3BC0AC7E-3B3B-4D3F-9CC0-B2BDECC460A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3BC0AC7E-3B3B-4D3F-9CC0-B2BDECC460A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3BC0AC7E-3B3B-4D3F-9CC0-B2BDECC460A6}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{E8480AD3-4B8E-41EC-BBDB-0B1EFEA6D638}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8480AD3-4B8E-41EC-BBDB-0B1EFEA6D638}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8480AD3-4B8E-41EC-BBDB-0B1EFEA6D638}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8480AD3-4B8E-41EC-BBDB-0B1EFEA6D638}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {32494BF3-FCB2-4E5E-9067-C0D0F61366A6}
+	EndGlobalSection
+EndGlobal

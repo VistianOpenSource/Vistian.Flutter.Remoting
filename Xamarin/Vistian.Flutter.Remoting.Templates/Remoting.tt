@@ -1,0 +1,1262 @@
+﻿<#@ template debug="true" hostspecific="true" language="C#" compilerOptions="/langversion:6" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".dart" #>
+<#@ assembly name="EnvDTE" #>
+<#@ assembly name="EnvDTE80" #>
+<#@ import namespace="EnvDTE" #>
+<#@ import namespace="Microsoft.VisualStudio.TextTemplating" #>
+<#
+	// setup the strategy, the renderer and the thing that actually generates the code.
+	var strategy = new DefaultDartStrategy(generateMixins:true);
+	var renderer = new FlatDartRender(this,strategy,"remoteServices","package:vistian_remoting/remoting.dart");
+	var codeFactory = new DartCodeFactory(this.Host,renderer);
+
+	// render the code, and then transform this to be output
+	codeFactory.Render();
+#>
+<#= renderer.TransformText() #>
+<#+
+	/// Single file generator for Dart code.
+	public class FlatDartRender:TextTransformation,IDartRender
+	{
+		private readonly IDartStrategy _dartStrategy;
+		private readonly GeneratedTextTransformation _gtt;
+		private readonly string _fileName;
+		private readonly string _remotingImport;
+
+		public FlatDartRender(GeneratedTextTransformation gtt,IDartStrategy dartStrategy,string fileName,string remotingImport)
+        {
+			_dartStrategy = dartStrategy;
+			_gtt = gtt;
+			_fileName = fileName;
+			_remotingImport = remotingImport;
+        }
+
+		public void Begin()
+        {
+#>
+// Generated Code - <#= System.DateTime.Now.ToLocalTime().ToShortDateString() #> <#= System.DateTime.Now.ToLocalTime().ToLongTimeString() #>
+
+import 'dart:async';
+import 'package:json_annotation/json_annotation.dart';
+import 'package:rxdart/rxdart.dart';
+import '<#=_remotingImport#>';
+
+part '<#= _fileName #>.g.dart';
+<#+
+        }
+
+		public void End()
+        {
+        }
+
+		public List<CSharpType> RenderInterface(EnvDTE.CodeInterface codeInterface)
+        {
+			List<CSharpType> typesReferenced = new List<CSharpType>();
+
+			var cSharpType = new CSharpType(codeInterface.FullName);
+
+			var className = _dartStrategy.GenerateMixins ? _dartStrategy.GetMixinClassName(cSharpType) : _dartStrategy.GetDartClassName(cSharpType);
+			
+			
+#>
+//<#=codeInterface.DocComment.Replace("\r\n","\r\n//") #>
+class <#= className #> extends Remoting
+{
+  static Service _service = Service("<#= cSharpType.FullName #>");
+  static _RemoteTypeMap _typeMap = _RemoteTypeMap();
+
+  Service get service => _service;
+    RemoteTypeMapper get remoteTypeMapper => _typeMap; 
+
+<#+						
+			// loop over all of the methods and export them
+
+			foreach(var method in codeInterface.Members.OfType<EnvDTE.CodeFunction>())
+			{
+				try
+				{
+					var typesUsed = WriteMethod(method);
+
+					typesReferenced.AddRange(typesUsed);
+				}
+				catch (Exception ex)
+				{
+					WriteError(String.Format("Render Interface {0}:{1} ",codeInterface.FullName,method.FullName),ex);
+				}
+			}#>
+}
+<#+
+		
+		return typesReferenced;
+      }
+		public override string TransformText()
+        {
+			var transformedText = this.GenerationEnvironment.ToString();
+
+			return transformedText;
+        }
+
+
+		public virtual List<CSharpType>  WriteMethod(CodeFunction method)
+        {
+			List<CSharpType> typesSeen = new List<CSharpType>();
+
+			List<string> originalParameterNames  = new List<string>();
+
+			var cSharpType = new CSharpType(method.Type.CodeType.FullName);
+			var returnType = _dartStrategy.GetDartTypeName(cSharpType);
+
+			List<string> parametersAndType = new List<string>();
+
+			foreach(EnvDTE80.CodeParameter2 parameter in method.Parameters.Cast<EnvDTE80.CodeParameter2>())
+			{
+				originalParameterNames.Add(parameter.Name);
+		
+				CSharpType pType = new CSharpType(parameter.Type.CodeType.FullName);
+
+				parametersAndType.Add(string.Format("{0} {1}",_dartStrategy.GetDartTypeName(pType),parameter.Name));
+
+				typesSeen.Add(new CSharpType(parameter.Type.CodeType.FullName));
+			}
+
+		var invocationHandler = _dartStrategy.GetHelperFor(cSharpType);
+
+		if (invocationHandler != null)
+        {
+		    typesSeen.AddRange(invocationHandler.GetReturnTypesFor(cSharpType));
+        }
+		else
+        {
+			throw new InvalidOperationException(String.Format("Unable to export method {0}",method.Name));
+        }
+
+		// construct the parameter names and their types
+
+
+		#>
+
+  //<#= method.DocComment.Replace("\r\n","\r\n  //") #>
+  Future<#= String.IsNullOrEmpty(returnType) ? string.Empty : String.Format("<{0}>",returnType) #> <#=_dartStrategy.GetMethodName(method.Name)#>(<#= string.Join(",",parametersAndType) #>) async { 
+  Map<String,dynamic> params = new Map();
+<#+
+		foreach(var parameter in originalParameterNames)
+        {
+#>
+  params["<#= parameter #>"] = <#= parameter #>;
+<#+
+		}
+		var returnLine = invocationHandler.GetInvocation().GetInvocation(method.Name,cSharpType);#>
+
+  return await <#= returnLine #>;		
+  }
+	    <#+ 
+			return typesSeen;
+		}
+
+		private void WriteError(String message,Exception exception)
+		{
+#>
+// Error in processing <#= String.Format("{0} : Exception : {1}",message,exception.Message) #>
+<#+
+        }
+		
+		public List<CSharpType> RenderClass(EnvDTE.CodeClass codeClass)
+        {
+			return new List<CSharpType>();
+        }
+
+		public List<CSharpType> RenderPoDo(EnvDTE.CodeClass codeClass)
+        {
+			List<CSharpType> typesReferenced = new List<CSharpType>();
+
+			var dartClassName = _dartStrategy.GetDartTypeName(new CSharpType(codeClass.FullName));
+				#>
+//<#=codeClass.DocComment.Replace("\r\n","\r\n//") #>
+@JsonSerializable()
+class <#=dartClassName#> extends Object {				
+<#+
+			List<string> dartFields = new List<string>();
+
+			foreach(EnvDTE.CodeProperty property in codeClass.Members.OfType<EnvDTE.CodeProperty>())
+            {
+				var propertyName = property.Name;
+				var dartFieldName = _dartStrategy.GetFieldName(propertyName);
+
+				var propertyType = new CSharpType(property.Type.CodeType.FullName);
+				typesReferenced.Add(propertyType);
+
+				var dartTypeName = _dartStrategy.GetDartTypeName(propertyType);
+
+				dartFields.Add(dartFieldName);	#>
+//<#= property.DocComment.Replace("\r\n","\r\n//")  #> 
+  @JsonKey(name:'<#= propertyName #>')
+  <#= dartTypeName #> <#= dartFieldName #>;
+<#+
+            }
+			var constructor = dartClassName+"("+string.Join(",",dartFields.Select(d => "this."+d))+");"; #>
+  <#= constructor #>
+
+  factory <#= dartClassName#>.fromJson(Map<String,dynamic> json) => _$<#= dartClassName #>FromJson(json);
+
+  Map<String,dynamic> toJson() => _$<#= dartClassName #>ToJson(this);
+}
+<#+
+		return typesReferenced;
+        }
+
+		/*  
+		  Produce a class containing the types utilized and how they map to C# types
+		  This shouldn't normally be used, except for initialization parameters in which the
+		  type needs to be known before hand (well, for things like autofac anyway).
+		*/
+		public void RenderTypeMap(List<CSharpType> types)
+        {
+			// just output a dictionary // of dart -> C#			 
+			#>
+class _RemoteTypeMap extends RemoteTypeMapper {
+  static Map<String,String> dartToRemote = <String,String> {
+<#+
+    foreach(var type in types)
+    {
+		var dartType = _dartStrategy.GetDartTypeName(type);
+#>
+    "<#=dartType#>" : "<#=type.FullName#>",
+<#+
+    }
+#>
+  };
+
+  _RemoteTypeMap():super(dartToRemote);
+}
+<#+
+        }
+    }
+
+	// MAIN Library code from here onwards
+
+    /// <summary>
+    /// Specification of how dart code is rendered, used by the dart code factory.
+    /// </summary>
+    public interface IDartRender
+    {
+        void Begin();
+        void End();
+
+        List<CSharpType> RenderInterface(EnvDTE.CodeInterface codeInterface);
+        List<CSharpType> RenderClass(EnvDTE.CodeClass codeClass);
+        List<CSharpType> RenderPoDo(EnvDTE.CodeClass codeClass);
+        void RenderTypeMap(List<CSharpType> types);
+    }
+
+    /// <summary>
+    /// Strategy specification of how the exporting of C# interfaces and types should be undertaken.
+    /// </summary>
+    public interface IDartStrategy
+    {
+        /// <summary>
+        /// Gets the equivalent Dart type name for a specified C# name
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        string GetDartTypeName(CSharpType type);
+
+        /// <summary>
+        /// Get the equivalent Dart class name for a specified C# class type
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        string GetDartClassName(CSharpType type);
+
+        /// <summary>
+        /// Get the name that would be used for a Mixin of a specified C# type
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        string GetMixinClassName(CSharpType type);
+
+        /// <summary>
+        /// Get the helper which is primarily responsible for handling a particular C# type
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        IDartMethodHelper GetHelperFor(CSharpType type);
+
+        /// <summary>
+        /// Given a C# method name, get the equivalent Dart one
+        /// </summary>
+        /// <param name="cSharpMethodName"></param>
+        /// <returns></returns>
+        string GetMethodName(string cSharpMethodName);
+
+        /// <summary>
+        /// Given a C# field name, get the equivalent Dart one
+        /// </summary>
+        /// <param name="cSharpPropertyName"></param>
+        /// <returns></returns>
+        string GetFieldName(string cSharpPropertyName);
+
+        /// <summary>
+        /// Get the associated serialization converter for a specified type
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        ISerializationConverter GetConverterFor(CSharpType type);
+
+        /// <summary>
+        /// Get whether Mixins should be generated or not
+        /// </summary>
+        bool GenerateMixins { get; }
+    }
+
+    /// <summary>
+    /// A default dart rendering strategy.
+    /// </summary>
+    public class DefaultDartStrategy : IDartStrategy
+    {
+        private readonly List<IDartMethodHelper> _helpers;
+
+        private List<IDartInvocation> _invocationFactory;
+
+        public DefaultDartStrategy(bool generateMixins)
+        {
+            GenerateMixins = generateMixins;
+
+            _helpers = new List<IDartMethodHelper>()
+                {
+                    new ObservableHelper(this),
+                    new TaskHelper(this),
+                    new ListHelper(this),
+                    new DictionaryHelper(this),
+                    new StandardTypesHelper(this),
+                    new CustomClassHelper(this)
+                };
+        }
+
+        public bool GenerateMixins { get; private set; }
+
+        public string GetDartTypeName(CSharpType type)
+        {
+            var helper = _helpers.FirstOrDefault(h => h.CanHandle(type));
+
+            if (helper == null)
+            {
+            }
+            return helper.GetDartTypeFor(type);
+        }
+
+        public string GetDartClassName(CSharpType type)
+        {
+            // if 'starts with an I, remove it
+            // otherwise just pass it through
+            return (type.Name[0] == 'I') ? type.Name.Substring(1) : type.Name;
+        }
+
+        public string GetMixinClassName(CSharpType type)
+        {
+            return string.Format("$_{0}Mixin", type.Name);
+        }
+
+        public IDartMethodHelper GetHelperFor(CSharpType type)
+        {
+            return _helpers.FirstOrDefault(h => h.CanHandle(type));
+        }
+
+        public string GetMethodName(string methodName)
+        {
+            return methodName.Substring(0, 1).ToLower() + methodName.Substring(1, methodName.Length - 1);
+        }
+
+        public string GetFieldName(string cSharpPropertyName)
+        {
+            return cSharpPropertyName.Substring(0, 1).ToLower() + cSharpPropertyName.Substring(1, cSharpPropertyName.Length - 1);
+        }
+
+        public ISerializationConverter GetConverterFor(CSharpType type)
+        {
+            var helper = _helpers.FirstOrDefault(h => h.CanHandle(type));
+
+            return helper.GetConvertor();
+        }
+    }
+
+
+
+
+    /// <summary>
+    /// Specification of class used to help in how to take responses from remote services and get the
+    /// data back into a form suitable for dart.
+    /// </summary>
+    public interface ISerializationConverter
+    {
+        string Convert(CSharpType type, string paramName);
+    }
+
+
+    /// <summary>
+    /// Specification of a Dart method helper which typically handles things
+    /// like getting contained Generic types and how a method should be invoked.
+    /// </summary>
+    public interface IDartMethodHelper
+    {
+        /// <summary>
+        /// Does this helper handle the specified type?
+        /// </summary>
+        /// <param name="returnType"></param>
+        /// <returns></returns>
+        bool CanHandle(CSharpType returnType);
+
+        /// <summary>
+        /// Get the code used to generate implementations for types which this helper covers.
+        /// </summary>
+        /// <returns></returns>
+        IDartInvocation GetInvocation();
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="returnType"></param>
+        /// <returns></returns>
+        CSharpType[] GetReturnTypesFor(CSharpType returnType);
+
+        /// <summary>
+        /// Get the associated serialization converter.
+        /// </summary>
+        /// <returns></returns>
+        ISerializationConverter GetConvertor();
+
+        /// <summary>
+        /// Get the dart type for a specified CSharpType
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        string GetDartTypeFor(CSharpType type);
+    }
+
+    /// <summary>
+    /// Specification of invocation generator
+    /// </summary>
+    public interface IDartInvocation
+    {
+        string GetInvocation(string methodName, CSharpType returnType);
+    }
+
+
+    /// <summary>
+    /// The main point from which all Dart code is rendered.
+    /// </summary>
+    public class DartCodeFactory
+    {
+        private EnvDTE.Project _project;
+
+        private IDartRender _render;
+
+        public DartCodeFactory(ITextTemplatingEngineHost host, IDartRender render)
+        {
+            var visualStudio = (host as IServiceProvider).GetService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
+            _project = visualStudio.Solution.FindProjectItem(host.TemplateFile).ContainingProject as EnvDTE.Project;
+
+            _render = render;
+        }
+
+        /// <summary>
+        /// Begin the render
+        /// </summary>
+        public void Render()
+        {
+            this._render.Begin();
+
+            // we retain a dictionary of POCO types we have seen which MAY need to be transferred as well
+            var typesReferenced = new Dictionary<CSharpType, bool>(new CSharpTypeEqualityComparer());
+
+            List<EnvDTE.CodeNamespace> namespaceElements = GetNamespaceElements().ToList();
+
+            var types = WriteClasses(namespaceElements);
+            foreach (var type in types)
+            {
+                if (!typesReferenced.ContainsKey(type))
+                {
+                    typesReferenced[type] = false;
+                }
+            }
+
+            types = WriteInterfaces(namespaceElements);
+
+            foreach (var type in types)
+            {
+                if (!typesReferenced.ContainsKey(type))
+                {
+                    typesReferenced[type] = false;
+                }
+            }
+
+            types = GetExportableClasses(namespaceElements);
+
+            foreach (var type in types)
+            {
+                if (!typesReferenced.ContainsKey(type))
+                {
+                    typesReferenced[type] = false;
+                }
+            }
+
+            WritePodoS(namespaceElements, typesReferenced);
+
+            WriteTypeMap(typesReferenced);
+
+            this._render.End();
+        }
+
+        public List<CSharpType> WriteClasses(List<EnvDTE.CodeNamespace> namespaceElements)
+        {
+            return new List<CSharpType>();
+        }
+
+
+        private IEnumerable<EnvDTE.CodeNamespace> GetNamespaceElements()
+        {
+            var projItems = new List<EnvDTE.ProjectItem>();
+
+            FillProjectItems(_project.ProjectItems, projItems);
+
+            var names = new HashSet<string>(projItems
+              .Where(i => i.FileCodeModel != null)
+              .SelectMany(i => i.FileCodeModel.CodeElements.OfType<EnvDTE.CodeElement>())
+              .Where(e => e.Kind == EnvDTE.vsCMElement.vsCMElementNamespace)
+              .Select(e => e.FullName));
+
+            var codeNs = new List<EnvDTE.CodeNamespace>();
+            FillCodeNamespaces(_project.CodeModel.CodeElements.OfType<EnvDTE.CodeNamespace>(), codeNs);
+
+            return codeNs.Where(ns => names.Contains(ns.FullName));
+        }
+
+        private void FillCodeNamespaces(IEnumerable<EnvDTE.CodeNamespace> parents, List<EnvDTE.CodeNamespace> all)
+        {
+            foreach (var parent in parents)
+            {
+                all.Add(parent);
+                FillCodeNamespaces(parent.Members.OfType<EnvDTE.CodeNamespace>(), all);
+            }
+        }
+
+        private void FillProjectItems(EnvDTE.ProjectItems items, List<EnvDTE.ProjectItem> ret)
+        {
+            if (items == null) return;
+            foreach (EnvDTE.ProjectItem item in items)
+            {
+                ret.Add(item);
+                FillProjectItems(item.ProjectItems, ret);
+            }
+        }
+
+
+        public List<CSharpType> GetExportableClasses(List<EnvDTE.CodeNamespace> namespaceElements)
+        {
+            List<CSharpType> typesReferenced = new List<CSharpType>();
+
+            foreach (var ns in namespaceElements)
+            {
+                foreach (EnvDTE.CodeClass codeClass in ns.Members.OfType<EnvDTE.CodeClass>())
+                {
+                    if (CanExport(codeClass))
+                    {
+                        CSharpType type = new CSharpType(codeClass.FullName);
+
+                        typesReferenced.Add(type);
+                    }
+                }
+            }
+            return typesReferenced;
+
+
+        }
+
+        public List<CSharpType> WriteInterfaces(List<EnvDTE.CodeNamespace> namespaceElements)
+        {
+            List<CSharpType> typesReferenced = new List<CSharpType>();
+
+            foreach (var ns in namespaceElements)
+            {
+                foreach (EnvDTE.CodeInterface codeInterface in ns.Members.OfType<EnvDTE.CodeInterface>())
+                {
+                    if (CanExportInterface(codeInterface))
+                    {
+                        var types = _render.RenderInterface(codeInterface);
+
+                        typesReferenced.AddRange(types);
+                    }
+                }
+            }
+
+            return typesReferenced;
+        }
+
+        public void WritePodoS(List<EnvDTE.CodeNamespace> namespaceElements, Dictionary<CSharpType, bool> types)
+        {
+            var classes = new List<EnvDTE.CodeClass>();
+
+            foreach (var ns in namespaceElements)
+            {
+                classes.AddRange(ns.Members.OfType<EnvDTE.CodeClass>());
+            }
+
+            while ((types.FirstOrDefault(entry => entry.Value == false)).Key != null)
+            {
+                var toProcess = types.First(entry => entry.Value == false).Key;
+
+                if (!StandardTypesHelper.IsStandard(toProcess))
+                {
+                    var codeClass = classes.FirstOrDefault(c => c.FullName == toProcess.FullName);
+
+                    // check that we should export the type
+                    if (CanExport(codeClass))
+                    {
+                        var referencedTypes = _render.RenderPoDo(codeClass);
+
+                        foreach (var referencedType in referencedTypes)
+                        {
+                            if (!types.ContainsKey(referencedType))
+                            {
+                                types[referencedType] = false;
+                            }
+                        }
+                    }
+                }
+                types[toProcess] = true;
+            }
+        }
+
+        public void WriteTypeMap(Dictionary<CSharpType, bool> typesReferenced)
+        {
+            _render.RenderTypeMap(typesReferenced.Keys.ToList());
+        }
+
+        public bool CanExport(EnvDTE.CodeFunction codeClass)
+        {
+            var attributes = codeClass.Attributes.OfType<CodeElement>();
+
+            return CanExportAttributes(attributes);
+        }
+
+        public bool CanExport(EnvDTE.CodeClass codeClass)
+        {
+            var attributes = codeClass.Attributes.OfType<CodeElement>();
+
+            return CanExportAttributes(attributes);
+        }
+
+
+        public bool CanExportInterface(CodeInterface codeInterface)
+        {
+            var attributes = codeInterface.Attributes.OfType<CodeElement>();
+
+            return CanExportAttributes(attributes);
+        }
+
+        private bool CanExportAttributes(IEnumerable<CodeElement> attributes)
+        {
+            var attribute = attributes.FirstOrDefault(a => a.Name == "FlutterExport");
+
+            if (attribute == null)
+            {
+                return false;
+            }
+
+            EnvDTE80.CodeAttribute2 ca2 = (EnvDTE80.CodeAttribute2)attribute;
+            var arguments = ca2.Arguments;
+
+            foreach (EnvDTE80.CodeAttributeArgument a in arguments)
+            {
+                if (a.Name == "Export")
+                {
+                    return a.Value != "false";
+                }
+
+                return a.Value != "false";
+            }
+
+            return true;
+        }
+    }
+
+
+
+    /// <summary>
+    /// Helper for C# methods which return a Task
+    /// </summary>
+    public class TaskHelper : IDartMethodHelper
+    {
+        private static string matchBase = "System.Threading.Tasks.Task";
+
+        private readonly IDartStrategy _strategy;
+
+        public TaskHelper(IDartStrategy strategy)
+        {
+            _strategy = strategy;
+        }
+
+        public bool CanHandle(CSharpType returnType)
+        {
+            return returnType.FullName.StartsWith(matchBase);
+        }
+
+        public IDartInvocation GetInvocation()
+        {
+            return new TaskDartInvocation(_strategy, this);
+        }
+
+        /// <summary>
+        /// Get the contained types of the task, this involves a bit of textual manipulation
+        /// </summary>
+        /// <param name="returnType"></param>
+        /// <returns></returns>
+        public CSharpType GetContainedType(CSharpType returnType)
+        {
+            var generics = returnType.FullName.Substring(matchBase.Length + 1, returnType.FullName.LastIndexOf('>') - (matchBase.Length + 1));
+
+            return new CSharpType(generics);
+        }
+
+        public CSharpType[] GetReturnTypesFor(CSharpType returnType)
+        {
+            var generics = returnType.FullName.Substring(matchBase.Length + 1, returnType.FullName.LastIndexOf('>') - (matchBase.Length + 1));
+
+            return new CSharpType[] { new CSharpType(generics) };
+
+        }
+
+        public ISerializationConverter GetConvertor()
+        {
+            return new StandardSerializationConverter();
+        }
+
+        public string GetDartTypeFor(CSharpType type)
+        {
+            return _strategy.GetDartTypeName(GetContainedType(type));
+        }
+    }
+
+    /// <summary>
+    /// Task based invocation handler.
+    /// </summary>
+    public class TaskDartInvocation : IDartInvocation
+    {
+        private readonly TaskHelper _helper;
+        private readonly IDartStrategy _strategy;
+        public TaskDartInvocation(IDartStrategy strategy, TaskHelper helper)
+        {
+            _strategy = strategy;
+            _helper = helper;
+        }
+        public string GetInvocation(string methodName, CSharpType returnType)
+        {
+            var genericType = _helper.GetContainedType(returnType);
+            var dartGenericType = _strategy.GetDartTypeName(genericType);
+            var converter = _strategy.GetConverterFor(genericType).Convert(genericType, "r");
+
+            return string.Format(@"$_invoke<{0}>(""{1}"",params:params,converter:(r) => {2})", dartGenericType, methodName, converter);
+        }
+    }
+
+
+
+    /// <summary>
+    /// Main helper for methods whose return type is an Observable
+    /// </summary>
+    public class ObservableHelper : IDartMethodHelper
+    {
+        private static string matchBase = "System.IObservable";
+
+        private IDartStrategy _strategy;
+
+        public ObservableHelper(IDartStrategy strategy)
+        {
+            _strategy = strategy;
+        }
+
+        public bool CanHandle(CSharpType returnType)
+        {
+            return returnType.FullName.StartsWith(matchBase);
+        }
+
+        public IDartInvocation GetInvocation()
+        {
+            return new ObservableDartInvocation(_strategy, this);
+        }
+
+        public CSharpType GetContainedType(CSharpType returnType)
+        {
+            var generics = returnType.FullName.Substring(matchBase.Length + 1, returnType.FullName.LastIndexOf('>') - (matchBase.Length + 1));
+
+            return new CSharpType(generics);
+        }
+
+        public CSharpType[] GetReturnTypesFor(CSharpType returnType)
+        {
+            return new CSharpType[] { GetContainedType(returnType) };
+        }
+
+        public ISerializationConverter GetConvertor()
+        {
+            throw new InvalidOperationException("Should never be used");
+        }
+
+        public string GetDartTypeFor(CSharpType type)
+        {
+            return "Observable<" + _strategy.GetDartTypeName(GetContainedType(type)) + ">";
+        }
+    }
+
+    /// <summary>
+    /// All things observable,well when its an observable return value anyway.
+    /// </summary>
+    public class ObservableDartInvocation : IDartInvocation
+    {
+        private readonly ObservableHelper _helper;
+        private readonly IDartStrategy _strategy;
+        public ObservableDartInvocation(IDartStrategy strategy, ObservableHelper helper)
+        {
+            _strategy = strategy;
+            _helper = helper;
+        }
+        public string GetInvocation(string methodName, CSharpType returnType)
+        {
+            var genericType = _helper.GetContainedType(returnType);
+
+            var dartGenericType = _strategy.GetDartTypeName(genericType);
+            var converter = _strategy.GetConverterFor(genericType).Convert(genericType, "r");
+
+            return string.Format(@"$_invokeObservable<{0}>(""{1}"",params:params,converter:(r) => {2})", dartGenericType, methodName, converter);
+        }
+    }
+
+
+    /// <summary>
+    /// The standard types serialization converter.
+    /// </summary>
+    public class StandardSerializationConverter : ISerializationConverter
+    {
+        private static readonly Dictionary<string, Func<string, string>> _returnTypeMap = new Dictionary<string, Func<string, string>>()
+        {
+            {"System.Void", (r) => string.Empty},
+            {"System.Single",(r) => "("+r+" as num)?.toDouble()"},
+            {"System.Double",(r) => "("+r+" as num)?.toDouble()"},
+            {"System.Int32",(r) => "("+r+" as num)?.toInt()"},
+            {"System.Int64",(r) => "("+r+" as num)?.toInt()"},
+            {"System.UInt32",(r) => "("+r+" as num)?.toInt()"},
+            {"System.UInt64",(r) => "("+r+" as num)?.toInt()"},
+            {"System.String", (r) => r+" as String"},
+            {"System.Datetime",(r) => "("+r+" == null ? null : DateTime.parse("+r+" as String))"}
+        };
+
+        public string Convert(CSharpType type, string paramName)
+        {
+            return _returnTypeMap[type.FullName]("r");
+        }
+    }
+
+    /// <summary>
+    /// Serialization converter for 'custom' classes.
+    /// </summary>
+    public class CustomSerializationConverter : ISerializationConverter
+    {
+        public string Convert(CSharpType type, string paramName)
+        {
+            return string.Format("{0}.fromJson({1})", type.Name, paramName);
+        }
+    }
+
+    /// <summary>
+    /// Serialization converter for Lists.
+    /// </summary>
+    public class ListSerializationConverter : ISerializationConverter
+    {
+        readonly ListHelper _helper;
+        readonly IDartStrategy _strategy;
+        public ListSerializationConverter(IDartStrategy strategy, ListHelper helper)
+        {
+            _helper = helper;
+            _strategy = strategy;
+        }
+
+        public string Convert(CSharpType type, string paramName)
+        {
+            var genericParameterType = _helper.GetReturnTypesFor(type)[0];
+            var dartType = _strategy.GetDartTypeName(genericParameterType);
+
+            var line = string.Format("new List<{0}>.from({1})", dartType, paramName);
+
+            return line;
+        }
+    }
+
+
+    /// <summary>
+    /// Helper for standard types.
+    /// </summary>
+    public class StandardTypesHelper : IDartMethodHelper
+    {
+        private static readonly Dictionary<string, string> _returnType = new Dictionary<string, string>()
+        {
+            {"System.Void",string.Empty},
+            {"System.Single","double"},
+            {"System.Double","double"},
+            {"System.Int32","int"},
+            {"System.Int64","int"},
+            {"System.UInt32","int"},
+            {"System.UInt64","int"},
+            {"System.String", "String"},
+            {"System.DateTime","DateTime"}
+        };
+
+        private readonly IDartStrategy _strategy;
+
+        public StandardTypesHelper(IDartStrategy strategy)
+        {
+            _strategy = strategy;
+        }
+
+        public static bool IsStandard(CSharpType type)
+        {
+            return _returnType.ContainsKey(type.FullName);
+        }
+
+        public CSharpType[] GetReturnTypesFor(CSharpType returnType)
+        {
+            return new[] { returnType };
+        }
+
+        public string GetDartTypeFor(CSharpType type)
+        {
+            return _returnType[type.FullName];
+        }
+
+        public bool CanHandle(CSharpType returnType)
+        {
+            return _returnType.ContainsKey(returnType.FullName);
+        }
+
+        public IDartInvocation GetInvocation()
+        {
+            return new StandardDartInvocation(_strategy, this);
+        }
+
+        public ISerializationConverter GetConvertor()
+        {
+            return new StandardSerializationConverter();
+        }
+    }
+
+    /// <summary>
+    /// Helper for List based return methods.
+    /// </summary>
+    public class ListHelper : IDartMethodHelper
+    {
+        private static string matchBase = "System.Collections.Generic.List";
+
+        private readonly IDartStrategy _strategy;
+
+        public ListHelper(IDartStrategy strategy)
+        {
+            _strategy = strategy;
+        }
+
+        public bool CanHandle(CSharpType returnType)
+        {
+            return returnType.FullName.StartsWith(matchBase);
+        }
+
+        public IDartInvocation GetInvocation()
+        {
+            return new StandardDartInvocation(_strategy, this);
+        }
+
+        public CSharpType[] GetReturnTypesFor(CSharpType returnType)
+        {
+            var generic = returnType.FullName.Substring(matchBase.Length + 1, returnType.FullName.IndexOf('>') - (matchBase.Length + 1));
+
+            return new CSharpType[] { new CSharpType(generic) };
+        }
+
+        public ISerializationConverter GetConvertor()
+        {
+            return new ListSerializationConverter(_strategy, this);
+        }
+
+        public string GetDartTypeFor(CSharpType type)
+        {
+            return string.Format("List<{0}>", _strategy.GetDartTypeName(GetContainedType(type)));
+        }
+
+        private CSharpType GetContainedType(CSharpType type)
+        {
+            var contained = GetReturnTypesFor(type);
+
+            return contained[0];
+        }
+    }
+
+    /// <summary>
+    /// Helper for dictionary based method returns.
+    /// </summary>
+    public class DictionaryHelper : IDartMethodHelper
+    {
+        private static string matchBase = "System.Collections.Generic.Dictionary";
+
+        private readonly IDartStrategy _strategy;
+        public DictionaryHelper(IDartStrategy strategy)
+        {
+            _strategy = strategy;
+        }
+
+        public bool CanHandle(CSharpType returnType)
+        {
+            return returnType.FullName.StartsWith(matchBase);
+        }
+
+        public IDartInvocation GetInvocation()
+        {
+            return new StandardDartInvocation(_strategy, this);
+        }
+
+        public ISerializationConverter GetConvertor()
+        {
+            return new DictionarySerializationConverter(_strategy, this);
+        }
+
+        public CSharpType[] GetReturnTypesFor(CSharpType type)
+        {
+            return GetContainedTypes(type).Select(t => new CSharpType(t)).ToArray<CSharpType>();
+        }
+
+        public string[] GetContainedTypes(CSharpType type)
+        {
+            // need to do a match on the 1st part and then take the content of the '<...>'
+            var fullName = type.FullName;
+
+            // this will have spaces in it 
+            var generics = fullName.Substring(matchBase.Length + 1, fullName.IndexOf('>') - (matchBase.Length + 1)).Replace(" ", string.Empty);
+
+            return generics.Split(',');
+        }
+
+
+        public string GetDartTypeFor(CSharpType type)
+        {
+            var typeKey = new CSharpType(GetContainedTypes(type)[0]);
+            var typeValue = new CSharpType(GetContainedTypes(type)[1]);
+
+            return string.Format("Map<{0},{1}>", _strategy.GetDartTypeName(typeKey), _strategy.GetDartTypeName(typeValue));
+        }
+    }
+
+    /// <summary>
+    /// Serialization converter for dictionaries.
+    /// </summary>
+    public class DictionarySerializationConverter : ISerializationConverter
+    {
+        readonly DictionaryHelper _helper;
+        readonly IDartStrategy _strategy;
+        public DictionarySerializationConverter(IDartStrategy strategy, DictionaryHelper helper)
+        {
+            _helper = helper;
+            _strategy = strategy;
+        }
+
+        public string Convert(CSharpType type, string paramName)
+        {
+            var genericParameterType = _helper.GetReturnTypesFor(type);
+
+            var dartKeyType = _strategy.GetDartTypeName(genericParameterType[0]);
+            var dartValueType = _strategy.GetDartTypeName(genericParameterType[1]);
+            var converter = _strategy.GetConverterFor(genericParameterType[1]).Convert(genericParameterType[1], "e");
+
+            return string.Format("({0} as Map<String,dynamic>)?.map((k,e) => MapEntry(k,e == null ? null : {1}))", paramName, converter);
+        }
+    }
+
+
+
+    /// <summary>
+    /// Invocation for custom class
+    /// </summary>
+    public class CustomInvocation : IDartInvocation
+    {
+        private readonly IDartStrategy _strategy;
+        public CustomInvocation(IDartStrategy strategy)
+        {
+            _strategy = strategy;
+        }
+
+        public string GetInvocation(string methodName, CSharpType returnType)
+        {
+            // get dart type
+            var type = _strategy.GetDartTypeName(returnType);
+
+            var converter = _strategy.GetConverterFor(returnType).Convert(returnType, "r");
+            return string.Format(@"$_invoke<{0}>(""{1}"",params:params,converter:(r) => {2})", type, methodName, converter);
+        }
+    }
+
+    /// <summary>
+    /// Helper when its a custom class.
+    /// </summary>
+    public class CustomClassHelper : IDartMethodHelper
+    {
+        private readonly IDartStrategy _strategy;
+        public CustomClassHelper(IDartStrategy strategy)
+        {
+            _strategy = strategy;
+        }
+        public bool CanHandle(CSharpType returnType)
+        {
+            return true;
+        }
+
+        public IDartInvocation GetInvocation()
+        {
+            return new CustomInvocation(_strategy);
+        }
+
+        public CSharpType[] GetReturnTypesFor(CSharpType returnType)
+        {
+            return new CSharpType[] { returnType };
+        }
+
+        public ISerializationConverter GetConvertor()
+        {
+            return new CustomSerializationConverter();
+        }
+
+        public string GetDartTypeFor(CSharpType type)
+        {
+            return type.Name;
+        }
+    }
+
+
+
+    /// <summary>
+    /// Standard types invocation helper.
+    /// </summary>
+    public class StandardDartInvocation : IDartInvocation
+    {
+        private readonly IDartMethodHelper _helper;
+        private readonly IDartStrategy _strategy;
+
+        public StandardDartInvocation(IDartStrategy strategy, IDartMethodHelper helper)
+        {
+            _strategy = strategy;
+            _helper = helper;
+        }
+        public string GetInvocation(string methodName, CSharpType returnType)
+        {
+            var type = _strategy.GetDartTypeName(returnType);
+
+            var converter = _strategy.GetConverterFor(returnType).Convert(returnType, "r");
+
+            if (string.IsNullOrEmpty(converter))
+            {
+                return string.Format(@"$_invoke(""{0}"",params:params)", methodName);
+            }
+            else
+            {
+                return string.Format(@"$_invoke<{0}>(""{1}"",params:params,converter:(r) => {2})", type, methodName, converter);
+            }
+
+        }
+    }
+
+
+
+    /// <summary>
+    /// Comparer for checking equality between CSharpType instances.
+    /// </summary>
+    public class CSharpTypeEqualityComparer : IEqualityComparer<CSharpType>
+    {
+        public bool Equals(CSharpType type1, CSharpType type2)
+        {
+            if (type1 == null && type2 == null)
+            {
+                return true;
+            }
+            else if (type2 == null || type1 == null)
+            {
+                return false;
+            }
+            else if (type1.FullName == type2.FullName)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public int GetHashCode(CSharpType type)
+        {
+            return type.FullName.GetHashCode();
+        }
+    }
+
+    /// <summary>
+    /// Helper type to encapsulate textual details of c# classes.
+    /// </summary>
+    public class CSharpType
+    {
+        public string FullName { get; private set; }
+
+        public CSharpType(string fullName)
+        {
+            FullName = fullName;
+        }
+
+        private string _name;
+
+        public string Name
+        {
+            get
+            {
+                // if already computed just return the value
+                if (!string.IsNullOrEmpty(_name))
+                {
+                    return _name;
+                }
+
+                var genericOpener = FullName.IndexOf('<');
+
+                int limit;
+
+                if (genericOpener > 0)
+                {
+                    limit = genericOpener - 1;
+                }
+                else
+                {
+                    limit = FullName.Length - 1;
+                }
+
+                var lastDotIndex = FullName.LastIndexOf('.', limit);
+
+                if (lastDotIndex != -1)
+                {
+                    _name = FullName.Substring(lastDotIndex + 1, FullName.Length - (lastDotIndex + 1));
+                }
+                else
+                {
+                    _name = FullName;
+                }
+
+                return _name;
+            }
+        }
+    }
+
+
+
+#>

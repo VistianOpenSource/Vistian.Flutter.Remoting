@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>Vistian.Flutter.Remoting.Droid</id>
+    <version>0.0.1</version>
+    <authors>Vistian</authors>
+    <owners>Vistian</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Description</description>
+    <dependencies>
+  <dependency id="Vistian.Flutter.Remoting" version="0.0.1" />
+</dependencies>
+  </metadata>
+<files>
+   <file src="..\Vistian.Flutter.Remoting.Droid\bin\debug\Vistian.Flutter.Remoting.Droid.dll" target="lib\monoandroid81" />
+</files>
+</package>
